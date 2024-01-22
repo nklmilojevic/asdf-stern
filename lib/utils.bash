@@ -2,34 +2,38 @@
 
 set -euo pipefail
 
+# TODO: Ensure this is the correct GitHub homepage where releases can be downloaded for stern.
 GH_REPO="https://github.com/stern/stern"
 TOOL_NAME="stern"
-TOOL_TEST="stern -version"
+TOOL_TEST="stern --help"
 
 fail() {
-  echo -e "asdf-$TOOL_NAME: $*"
-  exit 1
+	echo -e "asdf-$TOOL_NAME: $*"
+	exit 1
 }
 
 curl_opts=(-fsSL)
 
+# NOTE: You might want to remove this if stern is not hosted on GitHub releases.
 if [ -n "${GITHUB_API_TOKEN:-}" ]; then
-  curl_opts=("${curl_opts[@]}" -H "Authorization: token $GITHUB_API_TOKEN")
+	curl_opts=("${curl_opts[@]}" -H "Authorization: token $GITHUB_API_TOKEN")
 fi
 
 sort_versions() {
-  sed 'h; s/[+-]/./g; s/.p\([[:digit:]]\)/.z\1/; s/$/.z/; G; s/\n/ /' |
-    LC_ALL=C sort -t. -k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n | awk '{print $2}'
+	sed 'h; s/[+-]/./g; s/.p\([[:digit:]]\)/.z\1/; s/$/.z/; G; s/\n/ /' |
+		LC_ALL=C sort -t. -k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n | awk '{print $2}'
 }
 
 list_github_tags() {
-  git ls-remote --tags --refs "$GH_REPO" |
-    grep -o 'refs/tags/.*' | cut -d/ -f3- |
-    sed 's/^v//'
+	git ls-remote --tags --refs "$GH_REPO" |
+		grep -o 'refs/tags/.*' | cut -d/ -f3- |
+		sed 's/^v//' # NOTE: You might want to adapt this sed to remove non-version strings from tags
 }
 
 list_all_versions() {
-  list_github_tags
+	# TODO: Adapt this. By default we simply list the tag names from GitHub releases.
+	# Change this function if stern has other means of determining installable versions.
+	list_github_tags
 }
 
 get_arch() {
@@ -65,14 +69,14 @@ get_platform() {
 }
 
 download_release() {
-  local version filename url
-  version="$1"
-  filename="$2"
+	local version filename url
+	version="$1"
+	filename="$2"
 
-  url="$GH_REPO/releases/download/v${version}/stern_${version}_$(get_platform)_$(get_arch).tar.gz"
+	url="$GH_REPO/releases/download/v${version}/stern_${version}_$(get_platform)_$(get_arch).tar.gz"
 
-  echo "* Downloading $TOOL_NAME release $version..."
-  curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
+	echo "* Downloading $TOOL_NAME release $version..."
+	curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
 }
 
 install_version() {
@@ -85,10 +89,10 @@ install_version() {
 	fi
 
 	(
-    ls -lha "$ASDF_DOWNLOAD_PATH"
 		mkdir -p "$install_path"
 		cp -r "$ASDF_DOWNLOAD_PATH"/* "$install_path"
 
+		# TODO: Assert stern executable exists.
 		local tool_cmd
 		tool_cmd="$(echo "$TOOL_TEST" | cut -d' ' -f1)"
 		test -x "$install_path/$tool_cmd" || fail "Expected $install_path/$tool_cmd to be executable."
